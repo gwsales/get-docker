@@ -10,8 +10,9 @@ if [[ $? -ne 0 ]]; then
         if [[ ! -f /etc/docker/daemon.json ]]; then
             sudo cp daemon.json /etc/docker/daemon.json
         fi
+	rm get-docker.sh
     else
-        echo "[warn] get-docker.sh might have alrady ran"
+        echo "[warn] install-docker.sh might have alrady ran"
     fi
 else
     echo "[info] Docker already installed"
