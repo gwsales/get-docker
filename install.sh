@@ -1,5 +1,16 @@
 #!/bin/bash
+set -e
 
+##
+## NONET=true ./install.sh
+##
+
+NONET="${NONET:-false}"
+JSON=/etc/docker/daemon.json
+
+##
+## DOCKER
+##
 which docker 2>/dev/null
 if [[ $? -ne 0 ]]; then
   echo "[info] Installing docker."
@@ -7,14 +18,51 @@ if [[ $? -ne 0 ]]; then
   sudo sh get-docker.sh
   sudo usermod -aG docker $USER
   rm get-docker.sh
-  if [[ -d /docker ]]; then
-    echo "[info] Setting data-root to /docker vs /var/lib/docker."
-    sudo cp data-root.json /etc/docker/daemon.json
-  else
-    echo "[info] Using default data-root /var/lib/docker."
-  fi
 else
   echo "[info] Docker already installed."
 fi
+
+##
+## DAEMON
+##
+if [[ $NONET == true ]] || [[ -d /docker ]]; then
+    echo "[info] Using custom docker daemon settings."
+    if [[ $NONET == true ]] && [[ -d /docker ]]; then
+        echo "[info] Disabling Docker iptables and using /docker."
+        DAEMON_JSON=$(cat <<'EOF'
+{
+  "iptables": false,
+  "bridge": "none",
+  "data-root": "/docker"
+}
+EOF
+)
+    elif [[ $NONET == true ]]; then
+        echo "[info] Disabling Docker iptables."
+        DAEMON_JSON=$(cat <<'EOF'
+{
+  "iptables": false,
+  "bridge": "none"
+}
+EOF
+)
+    elif [[ -d /docker ]]; then
+        echo "[info] Using /docker as the data-root."
+        DAEMON_JSON=$(cat <<'EOF'
+{
+  "data-root": "/docker"
+}
+EOF
+)
+    fi
+    sudo mkdir -p /etc/docker
+    echo "[info] Setting: $JSON"
+    sudo tee "$JSON" >/dev/null <<EOF
+$DAEMON_JSON
+EOF
+else
+    echo "[info] Using default docker daemon settings."
+fi
+
 echo "[info] Done."
 exit 0
